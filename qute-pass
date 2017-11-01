@@ -20,11 +20,16 @@ ENCODING = 'UTF-8'
 
 argument_parser = argparse.ArgumentParser()
 argument_parser.add_argument('url', nargs='?', default=os.getenv('QUTE_URL'))
-argument_parser.add_argument('--password-store', '-p', default=PASSWORD_STORE_PATH)
-argument_parser.add_argument('--username-pattern', '-u', default=r'.*/(.+)')
-argument_parser.add_argument('--username-target', '-U', choices=['path', 'secret'], default='path')
-argument_parser.add_argument('--password-pattern', '-P', default=r'(.*)')
-argument_parser.add_argument('--dmenu-invocation', '-d', default='rofi -dmenu')
+argument_parser.add_argument('--password-store', '-p', default=PASSWORD_STORE_PATH,
+                             help='Path to your pass password-store')
+argument_parser.add_argument('--username-pattern', '-u', default=r'.*/(.+)',
+                             help='Regular expression that matches the username')
+argument_parser.add_argument('--username-target', '-U', choices=['path', 'secret'], default='path',
+                             help='The target for the username regular expression')
+argument_parser.add_argument('--password-pattern', '-P', default=r'(.*)',
+                             help='Regular expression that matches the password')
+argument_parser.add_argument('--dmenu-invocation', '-d', default='rofi -dmenu',
+                             help='Invocation used to execute a dmenu-provider')
 
 stderr = functools.partial(print, file=sys.stderr)
 
@@ -79,7 +84,8 @@ def main(arguments):
         stderr(f'Could not determine domain from URL: {arguments.url!r}!')
         return ExitCodes.COULD_NOT_DETERMINE_DOMAIN
 
-    candidates = find_pass_candidates(domain, arguments.password_store)
+    # Expand potential ~ in paths, since this script won't be called from a shell that does it for us
+    candidates = find_pass_candidates(domain, os.path.expanduser(arguments.password_store))
     if not candidates:
         stderr(f'No candidates for domain {domain!r} found!')
         return ExitCodes.NO_PASS_CANDIDATES

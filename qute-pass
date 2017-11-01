@@ -92,20 +92,24 @@ def main(arguments):
 
     selection = candidates[0] if len(candidates) == 1 else dmenu(candidates, arguments.dmenu_invocation)
     secret = pass_(selection)
-    data = selection if arguments.username_target == 'path' else secret
-    match = re.match(arguments.username_pattern, data)
+
+    # Match username
+    target = selection if arguments.username_target == 'path' else secret
+    match = re.match(arguments.username_pattern, target)
     if not match:
         stderr(f'Failed to match username pattern on {arguments.username_target}!')
         return ExitCodes.COULD_NOT_MATCH_USERNAME
     username = match.group(1)
 
+    # Match password
     match = re.match(arguments.password_pattern, secret)
     if not match:
         stderr('Failed to match password pattern on secret!')
         return ExitCodes.COULD_NOT_MATCH_PASSWORD
-
     password = match.group(1)
-    # Enter back into insert-mode so the user can immediately continue working
+
+    # Enter username and password using fake-key and <Tab> (which seems to work almost universally) and switch back into
+    # insert-mode, so the form can be directly submitted by hitting enter afterwards
     qute_command(f'fake-key {username} ;; fake-key <Tab> ;; fake-key {password} ;; enter-mode insert')
     return ExitCodes.SUCCESS
 

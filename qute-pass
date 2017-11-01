@@ -1,6 +1,17 @@
 #!/usr/bin/env python
 
-# Dependencies: python-tldextract, pass
+# Insert login information using pass and a dmenu-provider (e.g. dmenu, rofi -dmenu, ...).
+# A short demonstration can be seen here: https://i.imgur.com/KN3XuZP.gif.
+#
+# The domain of the site has to appear as a segment in the pass path, for example: "github.com/cryzed" or
+# "websites/github.com". How the username and password are determined is freely configurable using the CLI arguments.
+# The login information is inserted by emulating key events using qutebrowser's fake-key command in this manner:
+# [USERNAME]<Tab>[PASSWORD], which is compatible with almost all login forms.
+#
+# Dependencies: tldextract (Python 3 module), pass
+# For issues and feedback please use: https://github.com/cryzed/qutebrowser-userscripts
+#
+# Chris Braun (cryzed), 2017
 
 import argparse
 import enum
@@ -45,7 +56,7 @@ class ExitCodes(enum.IntEnum):
 
 def qute_command(command):
     with open(os.environ['QUTE_FIFO'], 'w') as fifo:
-        fifo.write(f'{command}\n')
+        fifo.write(command + '\n')
         fifo.flush()
 
 
@@ -81,13 +92,13 @@ def main(arguments):
 
     domain = tldextract.extract(arguments.url).registered_domain
     if not domain:
-        stderr(f'Could not determine domain from URL: {arguments.url!r}!')
+        stderr('Could not determine domain from URL: {!r}!'.format(arguments.url))
         return ExitCodes.COULD_NOT_DETERMINE_DOMAIN
 
     # Expand potential ~ in paths, since this script won't be called from a shell that does it for us
     candidates = find_pass_candidates(domain, os.path.expanduser(arguments.password_store))
     if not candidates:
-        stderr(f'No candidates for domain {domain!r} found!')
+        stderr('No candidates for domain {!r} found!'.format(domain))
         return ExitCodes.NO_PASS_CANDIDATES
 
     selection = candidates[0] if len(candidates) == 1 else dmenu(candidates, arguments.dmenu_invocation)
@@ -97,7 +108,7 @@ def main(arguments):
     target = selection if arguments.username_target == 'path' else secret
     match = re.match(arguments.username_pattern, target)
     if not match:
-        stderr(f'Failed to match username pattern on {arguments.username_target}!')
+        stderr('Failed to match username pattern on {}!'.format(arguments.username_target))
         return ExitCodes.COULD_NOT_MATCH_USERNAME
     username = match.group(1)
 
@@ -110,7 +121,7 @@ def main(arguments):
 
     # Enter username and password using fake-key and <Tab> (which seems to work almost universally) and switch back into
     # insert-mode, so the form can be directly submitted by hitting enter afterwards
-    qute_command(f'fake-key {username} ;; fake-key <Tab> ;; fake-key {password} ;; enter-mode insert')
+    qute_command('fake-key {} ;; fake-key <Tab> ;; fake-key {} ;; enter-mode insert'.format(username, password))
     return ExitCodes.SUCCESS
 
 

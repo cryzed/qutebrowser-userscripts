@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+
+# Dependencies: python-tldextract, python-xerox, python-yaml
+
+import argparse
+import itertools
+import os
+import time
+import uuid
+
+import tldextract
+import xerox
+import yaml
+
+SLEEP_INTERVAL = 0.01
+
+argument_parser = argparse.ArgumentParser()
+argument_parser.add_argument('--all-windows', action='store_true')
+argument_parser.add_argument('--domains', nargs='*')
+
+_fifo = open(os.environ['QUTE_FIFO'], 'w')
+
+
+def command(text):
+    _fifo.write(f'{text}\n')
+    _fifo.flush()
+
+
+def get_domain(url):
+    return tldextract.extract(url).registered_domain
+
+
+def main(arguments):
+    session_name = '_' + str(uuid.uuid4())
+    session_save_arguments = '' if arguments.all_windows else '--only-active-window'
+    command(f'session-save --quiet --force {session_save_arguments} {session_name}')
+
+    session_path = os.path.join(os.environ['QUTE_DATA_DIR'], 'sessions', f'{session_name}.yml')
+    while not os.path.exists(session_path):
+        time.sleep(SLEEP_INTERVAL)
+
+    with open(session_path, 'r', encoding='UTF-8') as file:
+        data = yaml.load(file)
+
+    command(f'session-delete --force {session_name}')
+
+    urls = [tab['history'][-1]['url'] for tab in itertools.chain(*[window['tabs'] for window in data['windows']])]
+    if arguments.domains:
+        urls = [url for url in urls if get_domain(url) in arguments.domains]
+
+    xerox.copy('\n'.join(urls))
+
+
+if __name__ == '__main__':
+    arguments = argument_parser.parse_args()
+    main(arguments)

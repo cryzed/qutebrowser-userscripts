@@ -79,6 +79,7 @@ stderr = functools.partial(print, file=sys.stderr)
 
 class ExitCodes(enum.IntEnum):
     SUCCESS = 0
+    FAILURE = 1
     # 1 is automatically used if Python throws an exception
     NO_PASS_CANDIDATES = 2
     COULD_NOT_MATCH_USERNAME = 3
@@ -118,7 +119,7 @@ def dmenu(items, invocation, encoding):
 def main(arguments):
     if not arguments.url:
         argument_parser.print_help()
-        return ExitCodes.SUCCESS
+        return ExitCodes.FAILURE
 
     extract_result = tldextract.extract(arguments.url)
 
